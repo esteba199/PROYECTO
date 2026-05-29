@@ -467,8 +467,9 @@ async function completeSession() {
         });
 
         if (res.status === 403) {
-            // Usuario demo — no se guarda, se informa amablemente
-            showToast('Sesión completada. Regístrate para guardar estadísticas 📊', 'info');
+            // Usuario demo — no se guarda, se muestra modal premium
+            showAccessRestrictedModal();
+            return;
         } else if (res.ok) {
             loadStats(); // Refrescar estadísticas
         }

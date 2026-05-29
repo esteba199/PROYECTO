@@ -434,6 +434,13 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(dto)
                     });
+                    
+                    if (response.status === 403) {
+                        closeModal();
+                        showAccessRestrictedModal();
+                        return;
+                    }
+
                     if (response.ok) {
                         task.isCompleted = isCompleted; // Actualizar localmente rápido
                         filterTasks(); // Re-render
@@ -452,6 +459,10 @@
 
                 try {
                     const response = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+                    if (response.status === 403) {
+                        showAccessRestrictedModal();
+                        return;
+                    }
                     if (response.ok) {
                         showToast('Tarea eliminada', 'success');
                         fetchTasks(); // Recargar lista real de BD

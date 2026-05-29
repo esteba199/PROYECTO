@@ -326,6 +326,12 @@
                         body: JSON.stringify(dto)
                     });
 
+                    if (response.status === 403) {
+                        closeModal();
+                        showAccessRestrictedModal();
+                        return;
+                    }
+
                     if (!response.ok) {
                         if (response.status === 400) {
                             const err = await response.json();
@@ -379,6 +385,12 @@
                         body: JSON.stringify(dto)
                     });
                     
+                    if (response.status === 403) {
+                        fcEvent.revert();
+                        showAccessRestrictedModal();
+                        return;
+                    }
+
                     if (response.ok) {
                         showToast('Fechas del evento actualizadas', 'success');
                     } else {
@@ -399,6 +411,13 @@
 
                 try {
                     const response = await fetch(`/api/events/${id}`, { method: 'DELETE' });
+                    
+                    if (response.status === 403) {
+                        closeModal();
+                        showAccessRestrictedModal();
+                        return;
+                    }
+                    
                     if (response.ok) {
                         showToast('Evento eliminado', 'success');
                         closeModal();
