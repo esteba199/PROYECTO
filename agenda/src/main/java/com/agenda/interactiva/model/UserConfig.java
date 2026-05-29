@@ -33,6 +33,9 @@ public class UserConfig {
     @Column(length = 20)
     private String theme; // 'LIGHT' o 'DARK'
 
+    @Column(length = 10)
+    private String currency; // 'USD', 'EUR', etc.
+
     @Column(name = "email_notifications_enabled")
     private Boolean emailNotificationsEnabled;
 
@@ -48,6 +51,9 @@ public class UserConfig {
         this.updatedAt = LocalDateTime.now();
         if (this.theme == null) {
             this.theme = "DARK"; // Modo oscuro por defecto
+        }
+        if (this.currency == null) {
+            this.currency = "USD";
         }
         if (this.emailNotificationsEnabled == null) {
             this.emailNotificationsEnabled = true;

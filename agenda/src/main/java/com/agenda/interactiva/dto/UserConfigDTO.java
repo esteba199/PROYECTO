@@ -11,5 +11,6 @@ import lombok.Setter;
 public class UserConfigDTO {
     
     private String theme; // 'LIGHT' o 'DARK'
+    private String currency; // 'USD', 'EUR', etc.
     private Boolean emailNotificationsEnabled;
 }

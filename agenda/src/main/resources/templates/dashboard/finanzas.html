@@ -235,15 +235,34 @@
             let allTransactions = [];
             let chartInstance = null;
 
+            let currencySymbol = '$';
+
             const expenseCategories = ['Alimentación', 'Transporte', 'Vivienda', 'Ocio', 'Salud', 'Educación', 'Otros'];
             const incomeCategories = ['Salario', 'Inversiones', 'Ventas', 'Regalos', 'Otros'];
 
-            document.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('DOMContentLoaded', async () => {
                 // Set default date to today
                 document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
                 updateCategories();
+                
+                try {
+                    const configRes = await fetch('/api/config');
+                    if (configRes.ok) {
+                        const config = await configRes.json();
+                        if (config.currency === 'EUR') currencySymbol = '€';
+                        else if (config.currency === 'GBP') currencySymbol = '£';
+                        else if (config.currency === 'COP') currencySymbol = '$'; // COP usa $ o COP$
+                        else if (config.currency === 'MXN') currencySymbol = '$'; // MXN usa $
+                        // Por defecto es $ (USD)
+                    }
+                } catch(e) {}
+
                 fetchTransactions();
             });
+
+            function formatCurrency(amount) {
+                return currencySymbol + amount.toFixed(2);
+            }
 
             function updateCategories() {
                 const type = document.getElementById('txType').value;
@@ -309,7 +328,7 @@
                             </div>
                         </div>
                         <div style="display:flex; align-items:center; gap: 15px;">
-                            <div class="tx-amount ${isInc ? 'income' : 'expense'}">${sign}$${amount.toFixed(2)}</div>
+                            <div class="tx-amount ${isInc ? 'income' : 'expense'}">${sign}${formatCurrency(amount)}</div>
                             <div class="tx-actions">
                                 <button onclick="deleteTransaction(${tx.id})" title="Eliminar"><i class="ph ph-trash"></i></button>
                             </div>
@@ -321,12 +340,12 @@
                 const balance = totalIncome - totalExpense;
                 
                 const balEl = document.getElementById('totalBalance');
-                balEl.innerText = `$${balance.toFixed(2)}`;
+                balEl.innerText = `${balance < 0 ? '-' : ''}${formatCurrency(Math.abs(balance))}`;
                 if(balance < 0) balEl.classList.add('negative');
                 else balEl.classList.remove('negative');
 
-                document.getElementById('totalIncome').innerText = `$${totalIncome.toFixed(2)}`;
-                document.getElementById('totalExpense').innerText = `$${totalExpense.toFixed(2)}`;
+                document.getElementById('totalIncome').innerText = `${formatCurrency(totalIncome)}`;
+                document.getElementById('totalExpense').innerText = `${formatCurrency(totalExpense)}`;
 
                 updateChart();
             }
@@ -384,7 +403,7 @@
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
-                                        return ' $' + context.parsed.toFixed(2);
+                                        return ' ' + formatCurrency(context.parsed);
                                     }
                                 }
                             }

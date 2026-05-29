@@ -28,6 +28,7 @@ public class UserConfigService {
                     UserConfig newConfig = UserConfig.builder()
                             .user(user)
                             .theme("DARK")
+                            .currency("USD")
                             .emailNotificationsEnabled(true)
                             .build();
                     return userConfigRepository.save(newConfig);
@@ -43,6 +44,9 @@ public class UserConfigService {
         
         if (dto.getTheme() != null) {
             config.setTheme(dto.getTheme());
+        }
+        if (dto.getCurrency() != null) {
+            config.setCurrency(dto.getCurrency());
         }
         if (dto.getEmailNotificationsEnabled() != null) {
             config.setEmailNotificationsEnabled(dto.getEmailNotificationsEnabled());

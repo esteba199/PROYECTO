@@ -32,9 +32,9 @@
         }
 
         .fc .fc-button-primary {
-            background-color: var(--primary-color) !important;
-            border-color: var(--primary-color) !important;
-            color: white !important;
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+            color: var(--text-primary) !important;
             border-radius: var(--radius-sm);
             text-transform: capitalize;
             box-shadow: none !important;
@@ -42,19 +42,23 @@
         }
 
         .fc .fc-button-primary:hover {
-            background-color: var(--primary-hover) !important;
+            background-color: var(--primary-color) !important;
+            border-color: var(--primary-color) !important;
+            color: white !important;
             transform: translateY(-2px);
         }
 
         .fc .fc-button-primary:disabled {
-            background-color: #a0a0a0 !important;
-            border-color: #a0a0a0 !important;
+            background-color: rgba(160, 160, 160, 0.2) !important;
+            border-color: rgba(160, 160, 160, 0.2) !important;
+            color: var(--text-secondary) !important;
             transform: none;
         }
         
         .fc .fc-button-active {
-            background-color: var(--text-primary) !important;
-            border-color: var(--text-primary) !important;
+            background-color: var(--primary-color) !important;
+            border-color: var(--primary-color) !important;
+            color: white !important;
         }
 
         .fc-theme-standard td, .fc-theme-standard th, .fc-theme-standard .fc-scrollgrid {
@@ -227,6 +231,13 @@
                         left: 'prev,next today',
                         center: 'title',
                         right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    },
+                    buttonText: {
+                        today: 'Hoy',
+                        month: 'Mes',
+                        week: 'Semana',
+                        day: 'Día',
+                        list: 'Lista'
                     },
                     editable: true,       // Permite arrastrar eventos
                     selectable: true,     // Permite clickar en días para crear eventos

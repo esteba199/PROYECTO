@@ -248,6 +248,21 @@
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
+                <div class="toggle-row" style="margin-top:20px; padding-top:20px; border-top: 1px solid var(--glass-border);">
+                    <div>
+                        <div class="toggle-label">Moneda Principal</div>
+                        <div class="toggle-sublabel">Selecciona la moneda para tus finanzas</div>
+                    </div>
+                    <div>
+                        <select id="currencySelect" class="form-control" style="width:auto; min-width: 120px;" onchange="saveCurrency(this.value)">
+                            <option value="USD">Dólares ($)</option>
+                            <option value="EUR">Euros (€)</option>
+                            <option value="GBP">Libras (£)</option>
+                            <option value="COP">Pesos COP ($)</option>
+                            <option value="MXN">Pesos MXN ($)</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <!-- Notificaciones -->
@@ -308,6 +323,11 @@ async function loadProfileData() {
             // Sincronizar toggle de notificaciones
             document.getElementById('emailNotifToggle').checked =
                 config.emailNotificationsEnabled !== false;
+
+            // Sincronizar select de moneda
+            if (config.currency) {
+                document.getElementById('currencySelect').value = config.currency;
+            }
         }
 
         // Nombre de usuario desde el authentication header de Thymeleaf
@@ -377,6 +397,24 @@ async function saveNotifPreference(enabled) {
         showToast('Preferencia de notificaciones guardada ✓', 'success');
     } catch (e) {
         showToast('Error al guardar preferencia', 'error');
+    }
+}
+
+// Guardar preferencia de moneda
+async function saveCurrency(currency) {
+    try {
+        const res = await fetch('/api/config', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currency: currency })
+        });
+        if (res.status === 403) {
+            showAccessRestrictedModal();
+            return;
+        }
+        showToast('Moneda guardada correctamente ✓', 'success');
+    } catch (e) {
+        showToast('Error al guardar moneda', 'error');
     }
 }
 
