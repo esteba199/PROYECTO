@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/plantilla_base}">
+<head>
+    <title>Modo Foco - Agenda</title>
+    <style layout:fragment="css">
+
+        /* ── Layout principal ── */
+        .focus-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+            padding-bottom: 40px;
+        }
+
+        /* ── Selección de duración ── */
+        .time-selector {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .time-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 10px 22px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            font-family: var(--font-primary);
+            transition: all 0.2s ease;
+        }
+
+        .time-btn:hover { background: rgba(102,178,255,0.2); border-color: var(--primary-color); }
+        .time-btn.selected {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 15px rgba(0,102,204,0.4);
+        }
+
+        /* Input de tiempo personalizado */
+        .custom-time-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .custom-time-input input {
+            width: 70px;
+            padding: 10px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.08);
+            color: var(--text-primary);
+            font-family: var(--font-primary);
+            font-size: 0.95rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .custom-time-input input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102,178,255,0.2);
+        }
+
+        /* ── Reloj circular ── */
+        .timer-wrapper {
+            position: relative;
+            width: 280px;
+            height: 280px;
+        }
+
+        .timer-svg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .timer-track {
+            fill: none;
+            stroke: rgba(255,255,255,0.08);
+            stroke-width: 10;
+        }
+
+        .timer-progress {
+            fill: none;
+            stroke: var(--primary-color);
+            stroke-width: 10;
+            stroke-linecap: round;
+            stroke-dasharray: 754; /* 2π × 120 */
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 1s linear, stroke 0.5s ease;
+        }
+
+        .timer-progress.urgent { stroke: #e74c3c; }
+
+        .timer-display {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .timer-time {
+            font-size: 4rem;
+            font-weight: 700;
+            font-family: var(--font-headers);
+            letter-spacing: -2px;
+            line-height: 1;
+        }
+
+        .timer-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* ── Controles ── */
+        .controls {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .btn-circle {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            border: 2px solid var(--glass-border);
+            background: rgba(255,255,255,0.06);
+            color: var(--text-primary);
+            font-size: 1.4rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .btn-circle:hover { background: rgba(255,255,255,0.15); transform: scale(1.1); }
+        .btn-circle.primary {
+            width: 70px; height: 70px;
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+            font-size: 1.8rem;
+            box-shadow: 0 8px 24px rgba(0,102,204,0.5);
+        }
+        .btn-circle.primary:hover { transform: scale(1.08); box-shadow: 0 12px 30px rgba(0,102,204,0.6); }
+
+        /* ── Estadísticas ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .stat-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            text-align: center;
+            backdrop-filter: blur(16px);
+        }
+
+        .stat-card .val {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            font-family: var(--font-headers);
+        }
+
+        .stat-card .lbl {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        /* ── Historial ── */
+        .history-list {
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .history-list h3 {
+            margin-bottom: 16px;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .history-item i { color: var(--primary-color); font-size: 1.2rem; }
+        .history-item .hist-date { color: var(--text-secondary); margin-left: auto; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+<div layout:fragment="contenido">
+
+    <div class="dashboard-header">
+        <div>
+            <h2>Modo Foco ⏱</h2>
+            <p style="color:var(--text-secondary);font-size:0.9rem;">
+                Técnica Pomodoro. Elige una duración, empieza y concéntrate.
+            </p>
+        </div>
+    </div>
+
+    <div class="focus-page">
+
+        <!-- Selector de tiempo -->
+        <div class="time-selector" id="timeSelector">
+            <button class="time-btn selected" onclick="selectPreset(this, 25)">25 min</button>
+            <button class="time-btn" onclick="selectPreset(this, 50)">50 min</button>
+            <button class="time-btn" onclick="selectPreset(this, 90)">90 min</button>
+
+            <!-- Tiempo personalizado -->
+            <div class="custom-time-input">
+                <span style="color:var(--text-secondary);font-size:0.9rem;">o</span>
+                <input type="number" id="customMinutes" min="1" max="300" placeholder="min"
+                       title="Introduce minutos personalizados (1–300)"
+                       onchange="selectCustom(this.value)">
+                <button class="time-btn" onclick="selectCustom(document.getElementById('customMinutes').value)"
+                        style="padding:10px 14px;">OK</button>
+            </div>
+        </div>
+
+        <!-- Reloj circular animado -->
+        <div class="timer-wrapper">
+            <svg class="timer-svg" viewBox="0 0 280 280">
+                <circle class="timer-track" cx="140" cy="140" r="120"/>
+                <circle class="timer-progress" id="timerProgress" cx="140" cy="140" r="120"/>
+            </svg>
+            <div class="timer-display">
+                <div class="timer-time" id="timerTime">25:00</div>
+                <div class="timer-label" id="timerLabel">Listo</div>
+            </div>
+        </div>
+
+        <!-- Controles -->
+        <div class="controls">
+            <button class="btn-circle" id="resetBtn" onclick="resetTimer()" title="Reiniciar" disabled>
+                <i class="ph ph-arrow-counter-clockwise"></i>
+            </button>
+            <button class="btn-circle primary" id="playBtn" onclick="toggleTimer()" title="Iniciar">
+                <i class="ph ph-play" id="playIcon"></i>
+            </button>
+            <button class="btn-circle" onclick="skipTimer()" title="Saltar" id="skipBtn" disabled>
+                <i class="ph ph-skip-forward"></i>
+            </button>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="val" id="statSessions">–</div>
+                <div class="lbl">Sesiones</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" id="statMinutes">–</div>
+                <div class="lbl">Minutos</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" id="statHours">–</div>
+                <div class="lbl">Horas</div>
+            </div>
+        </div>
+
+        <!-- Historial -->
+        <div class="history-list">
+            <h3><i class="ph ph-clock-clockwise"></i> Historial reciente</h3>
+            <div id="historyContainer">
+                <!-- Se carga dinámicamente -->
+                <div style="color:var(--text-secondary);font-size:0.9rem;text-align:center;padding:20px;">
+                    Cargando historial...
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+<th:block layout:fragment="scripts">
+<script>
+/* ──────────────────────────────────────────
+   MODO FOCO — Lógica principal
+   ────────────────────────────────────────── */
+
+let totalSeconds     = 25 * 60;   // segundos totales de la sesión actual
+let remainingSeconds = 25 * 60;   // segundos restantes
+let selectedMinutes  = 25;        // minutos seleccionados
+let timerInterval    = null;
+let isRunning        = false;
+
+const CIRCUMFERENCE = 2 * Math.PI * 120; // 754.0
+
+// Elementos del DOM
+const timerProgress = document.getElementById('timerProgress');
+const timerTime     = document.getElementById('timerTime');
+const timerLabel    = document.getElementById('timerLabel');
+const playIcon      = document.getElementById('playIcon');
+const playBtn       = document.getElementById('playBtn');
+const resetBtn      = document.getElementById('resetBtn');
+const skipBtn       = document.getElementById('skipBtn');
+
+// Inicializar al cargar
+document.addEventListener('DOMContentLoaded', () => {
+    timerProgress.style.strokeDasharray  = CIRCUMFERENCE;
+    timerProgress.style.strokeDashoffset = 0;
+    loadStats();
+});
+
+/* ── Selección de preset de tiempo ── */
+function selectPreset(btn, minutes) {
+    if (isRunning) return;
+
+    // Quitar selección activa
+    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+
+    // Limpiar input personalizado
+    document.getElementById('customMinutes').value = '';
+
+    setMinutes(minutes);
+}
+
+/* ── Selección de tiempo personalizado ── */
+function selectCustom(val) {
+    const minutes = parseInt(val, 10);
+    if (isNaN(minutes) || minutes < 1 || minutes > 300) {
+        showToast('Introduce un valor entre 1 y 300 minutos', 'warning');
+        return;
+    }
+    if (isRunning) { showToast('Para el temporizador antes de cambiar el tiempo', 'info'); return; }
+
+    // Quitar todos los presets seleccionados
+    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+
+    setMinutes(minutes);
+    showToast(`Duración personalizada: ${minutes} minutos`, 'info');
+}
+
+/* ── Establece los minutos y reinicia el display ── */
+function setMinutes(minutes) {
+    selectedMinutes  = minutes;
+    totalSeconds     = minutes * 60;
+    remainingSeconds = minutes * 60;
+    updateDisplay();
+    updateProgress();
+    timerLabel.textContent = 'Listo';
+    timerProgress.classList.remove('urgent');
+}
+
+/* ── Play / Pausa ── */
+function toggleTimer() {
+    if (isRunning) {
+        pauseTimer();
+    } else {
+        startTimer();
+    }
+}
+
+function startTimer() {
+    isRunning = true;
+    playIcon.className = 'ph ph-pause';
+    timerLabel.textContent = 'Concentrado';
+    resetBtn.disabled = false;
+    skipBtn.disabled  = false;
+
+    timerInterval = setInterval(() => {
+        remainingSeconds--;
+
+        if (remainingSeconds <= 0) {
+            remainingSeconds = 0;
+            completeSession();
+            return;
+        }
+
+        updateDisplay();
+        updateProgress();
+
+        // Efecto visual en los últimos 60 segundos
+        if (remainingSeconds <= 60) {
+            timerProgress.classList.add('urgent');
+        }
+    }, 1000);
+}
+
+function pauseTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    isRunning = false;
+    playIcon.className = 'ph ph-play';
+    timerLabel.textContent = 'Pausado';
+}
+
+function resetTimer() {
+    pauseTimer();
+    remainingSeconds = totalSeconds;
+    updateDisplay();
+    updateProgress();
+    timerLabel.textContent = 'Listo';
+    timerProgress.classList.remove('urgent');
+    resetBtn.disabled = true;
+    skipBtn.disabled  = true;
+}
+
+function skipTimer() {
+    if (isRunning) pauseTimer();
+    completeSession();
+}
+
+/* ── Completar sesión ── */
+async function completeSession() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    isRunning = false;
+    playIcon.className = 'ph ph-play';
+    timerLabel.textContent = '¡Completado! 🎉';
+    resetBtn.disabled = true;
+    skipBtn.disabled  = true;
+
+    // Efecto visual de completado
+    timerProgress.style.stroke = '#2ecc71';
+    setTimeout(() => {
+        timerProgress.style.stroke = '';
+        timerProgress.classList.remove('urgent');
+        resetTimer();
+    }, 3000);
+
+    // Toast de celebración
+    showToast(`¡Sesión de ${selectedMinutes} min completada! Tómate un descanso 🎉`, 'success');
+
+    // Guardar en base de datos
+    try {
+        const res = await fetch('/api/foco', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ durationMinutes: selectedMinutes })
+        });
+
+        if (res.status === 403) {
+            // Usuario demo — no se guarda, se informa amablemente
+            showToast('Sesión completada. Regístrate para guardar estadísticas 📊', 'info');
+        } else if (res.ok) {
+            loadStats(); // Refrescar estadísticas
+        }
+    } catch (e) {
+        console.error('Error al guardar sesión:', e);
+    }
+}
+
+/* ── Actualizar display del reloj ── */
+function updateDisplay() {
+    const m = Math.floor(remainingSeconds / 60);
+    const s = remainingSeconds % 60;
+    timerTime.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+/* ── Actualizar barra de progreso circular ── */
+function updateProgress() {
+    const ratio = remainingSeconds / totalSeconds;
+    const offset = CIRCUMFERENCE * (1 - ratio);
+    timerProgress.style.strokeDashoffset = offset;
+}
+
+/* ── Cargar estadísticas desde la API ── */
+async function loadStats() {
+    try {
+        const res = await fetch('/api/foco/stats');
+        if (!res.ok) return;
+
+        const data = await res.json();
+        document.getElementById('statSessions').textContent = data.totalSessions || 0;
+        document.getElementById('statMinutes').textContent  = data.totalMinutes  || 0;
+        document.getElementById('statHours').textContent    = ((data.totalMinutes || 0) / 60).toFixed(1);
+
+        // Renderizar historial
+        renderHistory(data.history || []);
+    } catch (e) {
+        console.error('Error al cargar estadísticas:', e);
+    }
+}
+
+/* ── Renderizar historial de sesiones ── */
+function renderHistory(history) {
+    const container = document.getElementById('historyContainer');
+
+    if (!history.length) {
+        container.innerHTML = `
+            <div style="color:var(--text-secondary);font-size:0.9rem;text-align:center;padding:24px;">
+                <i class="ph ph-smiley" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+                Aún no has completado ninguna sesión. ¡Empieza ahora!
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = history.slice(0, 8).map(s => {
+        const date = new Date(s.completedAt);
+        const dateStr = date.toLocaleString('es-ES', {
+            day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'
+        });
+        return `
+            <div class="history-item">
+                <i class="ph ph-timer"></i>
+                <span><strong>${s.durationMinutes} minutos</strong> de concentración</span>
+                <span class="hist-date">${dateStr}</span>
+            </div>`;
+    }).join('');
+}
+</script>
+</th:block>
+</body>
+</html>

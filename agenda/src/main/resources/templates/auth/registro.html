@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - Agenda Interactiva</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <link rel="stylesheet" th:href="@{/css/variables.css}">
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body class="auth-body">
+    
+    <!-- Elementos decorativos para el efecto Glassmorphism -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    
+    <div class="auth-container glass-panel register-panel">
+        <div class="auth-header">
+            <div class="logo">
+                <i class="ph ph-calendar-plus"></i>
+            </div>
+            <h2>Crea tu cuenta</h2>
+            <p>Únete para empezar a organizar tu vida.</p>
+        </div>
+        
+        <!-- Error global de registro (ej. El usuario ya existe) -->
+        <div th:if="${errorRegistro}" class="alert alert-error">
+            <i class="ph ph-warning-circle"></i>
+            <span th:text="${errorRegistro}"></span>
+        </div>
+        
+        <!-- Formulario vinculado al objeto 'usuario' de Thymeleaf -->
+        <form th:action="@{/registro}" th:object="${usuario}" method="post" class="auth-form">
+            
+            <div class="form-group">
+                <label for="username">Nombre de Usuario</label>
+                <div class="input-icon">
+                    <i class="ph ph-user"></i>
+                    <!-- th:field se encarga de conectar este input con el campo 'username' del DTO -->
+                    <input type="text" id="username" th:field="*{username}" placeholder="ej: juanperez" required>
+                </div>
+                <!-- Muestra error de validación de Spring -->
+                <span th:if="${#fields.hasErrors('username')}" th:errors="*{username}" class="error-text"></span>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Correo Electrónico</label>
+                <div class="input-icon">
+                    <i class="ph ph-envelope-simple"></i>
+                    <input type="email" id="email" th:field="*{email}" placeholder="ej: juan@email.com" required>
+                </div>
+                <span th:if="${#fields.hasErrors('email')}" th:errors="*{email}" class="error-text"></span>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <div class="input-icon">
+                    <i class="ph ph-lock-key"></i>
+                    <input type="password" id="password" th:field="*{password}" placeholder="••••••••" required>
+                </div>
+                <span th:if="${#fields.hasErrors('password')}" th:errors="*{password}" class="error-text"></span>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">
+                Registrarse <i class="ph ph-arrow-right"></i>
+            </button>
+            
+        </form>
+        
+        <div class="auth-footer">
+            <p>¿Ya tienes cuenta? <a th:href="@{/inicio_sesion}">Inicia Sesión</a></p>
+        </div>
+    </div>
+
+</body>
+</html>

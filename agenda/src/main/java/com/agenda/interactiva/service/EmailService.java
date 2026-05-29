@@ -25,7 +25,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.from}")
+    @Value("${app.mail.sender}")
     private String fromEmail;
 
     /**
@@ -73,6 +73,36 @@ public class EmailService {
                 "  <a href='http://localhost:8080' style='background: #66fcf1; color: #000000; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px;'>Ir a mi Agenda</a>" +
                 "</div>" +
                 "<p style='font-size: 12px; color: #718096; text-align: center; margin-top: 40px;'>Este es un correo automático. Por favor, no respondas a este mensaje.</p>" +
+                "</div>" +
+                "</body>" +
+                "</html>";
+
+        sendEmail(to, subject, content);
+    }
+
+    /**
+     * Plantilla de Correo de Recordatorio.
+     */
+    public void sendReminderEmail(String to, String username, com.agenda.interactiva.model.Event event) {
+        String subject = "Recordatorio: " + event.getTitle();
+        String eventDate = event.getStartTime().toLocalDate().toString();
+        String eventTime = event.getStartTime().toLocalTime().toString();
+        
+        String content = "<html>" +
+                "<body style='font-family: Arial, sans-serif; background-color: #090a0f; color: #ffffff; padding: 20px;'>" +
+                "<div style='max-width: 600px; margin: auto; background: rgba(22, 27, 45, 0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);'>" +
+                "<h2 style='color: #66fcf1; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;'>¡Hola, " + username + "!</h2>" +
+                "<p style='font-size: 16px; line-height: 1.6;'>Este es un recordatorio de tu próximo evento programado en tu <strong>Agenda Interactiva</strong>.</p>" +
+                "<div style='background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid " + event.getColor() + ";'>" +
+                "  <h3 style='margin-top: 0; color: #fff;'>" + event.getTitle() + "</h3>" +
+                "  <p style='margin: 5px 0; color: #a0aec0;'><strong>Fecha:</strong> " + eventDate + " a las " + eventTime + "</p>" +
+                "  <p style='margin: 5px 0; color: #a0aec0;'><strong>Lugar:</strong> " + (event.getLocation() != null ? event.getLocation() : "No especificado") + "</p>" +
+                "  <p style='margin: 5px 0; color: #a0aec0;'>" + (event.getDescription() != null ? event.getDescription() : "") + "</p>" +
+                "</div>" +
+                "<div style='text-align: center; margin-top: 30px;'>" +
+                "  <a href='http://localhost:8080/calendario' style='background: #66fcf1; color: #000000; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px;'>Ver en Calendario</a>" +
+                "</div>" +
+                "<p style='font-size: 12px; color: #718096; text-align: center; margin-top: 40px;'>Este es un correo automático de tu Agenda Interactiva Inteligente.</p>" +
                 "</div>" +
                 "</body>" +
                 "</html>";

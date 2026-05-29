@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Agenda Interactiva</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <link rel="stylesheet" th:href="@{/css/variables.css}">
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body class="auth-body">
+    
+    <!-- Elementos decorativos para el efecto Glassmorphism -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    
+    <div class="auth-container glass-panel">
+        <div class="auth-header">
+            <div class="logo">
+                <i class="ph ph-calendar-check"></i>
+            </div>
+            <h2>Bienvenido de nuevo</h2>
+            <p>Ingresa tus credenciales para acceder a tu agenda.</p>
+        </div>
+        
+        <!-- Alerta de Error: Se muestra si Spring Security redirige con ?error -->
+        <div th:if="${param.error}" class="alert alert-error">
+            <i class="ph ph-warning-circle"></i>
+            Usuario o contraseña incorrectos.
+        </div>
+        
+        <!-- Alerta de Éxito: Se muestra tras registrarse exitosamente o hacer logout -->
+        <div th:if="${param.logout}" class="alert alert-success">
+            <i class="ph ph-check-circle"></i>
+            Has cerrado sesión exitosamente.
+        </div>
+        <div th:if="${mensajeExito}" class="alert alert-success">
+            <i class="ph ph-check-circle"></i>
+            <span th:text="${mensajeExito}"></span>
+        </div>
+        
+        <!-- Formulario que envía un POST a la misma ruta /inicio_sesion -->
+        <form th:action="@{/inicio_sesion}" method="post" class="auth-form">
+            
+            <div class="form-group">
+                <label for="username">Usuario</label>
+                <div class="input-icon">
+                    <i class="ph ph-user"></i>
+                    <!-- 'name="username"' es el parámetro que Spring Security espera por defecto -->
+                    <input type="text" id="username" name="username" placeholder="ej: juanperez" required autofocus>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <div class="input-icon">
+                    <i class="ph ph-lock-key"></i>
+                    <!-- 'name="password"' es el parámetro por defecto de Spring -->
+                    <input type="password" id="password" name="password" placeholder="••••••••" required>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <label class="remember-me">
+                    <input type="checkbox" name="remember-me"> Recordarme
+                </label>
+                <a href="#" class="forgot-pwd">¿Olvidaste tu contraseña?</a>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">
+                Iniciar Sesión <i class="ph ph-arrow-right"></i>
+            </button>
+
+            <button type="button" class="btn btn-outline btn-block" style="margin-top: 15px;" onclick="loginAsGuest()">
+                <i class="ph ph-user-focus"></i> Entrar como Invitado
+            </button>
+            
+        </form>
+        
+        <div class="auth-footer">
+            <p>¿No tienes una cuenta? <a th:href="@{/registro}">Regístrate aquí</a></p>
+        </div>
+    </div>
+
+    <script>
+        function loginAsGuest() {
+            document.getElementById('username').value = 'demo';
+            document.getElementById('password').value = 'demo';
+            document.querySelector('.auth-form').submit();
+        }
+    </script>
+</body>
+</html>

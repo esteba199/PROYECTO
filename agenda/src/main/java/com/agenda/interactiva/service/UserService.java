@@ -72,4 +72,41 @@ public class UserService {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return findByUsername(username);
     }
+
+    /**
+     * Actualiza el nombre de usuario y/o email del usuario autenticado.
+     */
+    @Transactional
+    public User updateProfile(String newUsername, String newEmail) {
+        User user = getAuthenticatedUser();
+
+        // Validar y actualizar username si se proporcionó
+        if (newUsername != null && !newUsername.isBlank() && !newUsername.equals(user.getUsername())) {
+            if (userRepository.existsByUsername(newUsername)) {
+                throw new BadRequestException("El nombre de usuario '" + newUsername + "' ya está en uso.");
+            }
+            user.setUsername(newUsername);
+        }
+
+        // Validar y actualizar email si se proporcionó
+        if (newEmail != null && !newEmail.isBlank() && !newEmail.equals(user.getEmail())) {
+            if (userRepository.existsByEmail(newEmail)) {
+                throw new BadRequestException("El correo '" + newEmail + "' ya está registrado.");
+            }
+            user.setEmail(newEmail);
+        }
+
+        return userRepository.save(user);
+    }
+
+    /**
+     * Cambia la contraseña del usuario autenticado.
+     */
+    @Transactional
+    public void changePassword(String newPassword) {
+        User user = getAuthenticatedUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
 }
+

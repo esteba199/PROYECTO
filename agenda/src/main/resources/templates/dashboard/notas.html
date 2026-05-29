@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{fragments/plantilla_base}">
+<head>
+    <title>Notas Rápidas - Agenda</title>
+    <style layout:fragment="css">
+        /* Grid estilo Masonry (aproximación) o Grid normal para Sticky Notes */
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .note-card {
+            border-radius: var(--radius-md);
+            padding: 20px;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: var(--transition);
+            box-shadow: var(--glass-shadow);
+            color: #fff;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .note-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+        }
+
+        .note-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
+            pointer-events: none;
+        }
+
+        .note-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            z-index: 1;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .note-content {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            flex-grow: 1;
+            z-index: 1;
+            white-space: pre-wrap; /* Respeta los saltos de línea */
+            opacity: 0.9;
+        }
+
+        .note-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            font-size: 0.75rem;
+            opacity: 0.8;
+            z-index: 1;
+        }
+
+        .note-actions {
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .note-card:hover .note-actions {
+            opacity: 1;
+        }
+
+        .note-actions button {
+            background: rgba(0,0,0,0.2);
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .note-actions button:hover {
+            background: rgba(0,0,0,0.4);
+        }
+
+        /* Modal Styles compartidos con tareas.html pero re-declarados aquí por simplicidad */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content {
+            background: var(--bg-color); width: 100%; max-width: 500px;
+            padding: 24px; border-radius: var(--radius-lg);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            transform: translateY(-20px); transition: transform 0.3s;
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 500; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: rgba(255,255,255,0.5); font-family: inherit; }
+        
+        /* Paleta de colores para las notas */
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .color-option {
+            width: 30px; height: 30px; border-radius: 50%;
+            cursor: pointer; border: 2px solid transparent;
+            transition: transform 0.2s;
+        }
+        .color-option:hover { transform: scale(1.1); }
+        .color-option.selected { border-color: var(--text-primary); transform: scale(1.1); }
+
+        /* Toasts */
+        .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 12px 20px; border-radius: var(--radius-sm); color: white; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); transform: translateX(120%); transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); display: flex; align-items: center; gap: 10px; }
+        .toast.show { transform: translateX(0); }
+        .toast-success { background: #2ecc71; }
+        .toast-error { background: #e74c3c; }
+        
+        /* Skeleton */
+        .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: loading 1.5s infinite; border-radius: 4px; }
+        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
+</head>
+<body>
+    <div layout:fragment="contenido">
+        
+        <div class="dashboard-header">
+            <div>
+                <h2>Notas Rápidas</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Tus ideas al instante</p>
+            </div>
+            <button class="btn btn-primary" onclick="openModal()"><i class="ph ph-plus"></i> Crear Nota</button>
+        </div>
+
+        <!-- Buscador -->
+        <div class="glass-panel" style="padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px;">
+            <input type="text" id="searchInput" class="form-control" placeholder="Buscar en mis notas..." onkeyup="filterNotes()">
+        </div>
+
+        <!-- Contenedor Grid -->
+        <div id="notesContainer" class="notes-grid">
+            <!-- Skeleton Loader -->
+            <div class="note-card" style="background: var(--glass-bg);">
+                <div class="skeleton" style="width: 70%; height: 20px; margin-bottom: 12px;"></div>
+                <div class="skeleton" style="width: 100%; height: 14px; margin-bottom: 8px;"></div>
+                <div class="skeleton" style="width: 90%; height: 14px; margin-bottom: 8px;"></div>
+                <div class="skeleton" style="width: 40%; height: 14px; margin-bottom: 8px;"></div>
+            </div>
+            <div class="note-card" style="background: var(--glass-bg);">
+                <div class="skeleton" style="width: 50%; height: 20px; margin-bottom: 12px;"></div>
+                <div class="skeleton" style="width: 100%; height: 14px; margin-bottom: 8px;"></div>
+                <div class="skeleton" style="width: 80%; height: 14px; margin-bottom: 8px;"></div>
+            </div>
+        </div>
+
+        <!-- Modal para Crear/Editar Nota -->
+        <div id="noteModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Nueva Nota</h3>
+                    <button class="icon-btn" onclick="closeModal()"><i class="ph ph-x"></i></button>
+                </div>
+                
+                <form id="noteForm" onsubmit="saveNote(event)">
+                    <input type="hidden" id="noteId">
+                    <input type="hidden" id="noteColor" value="#3498db">
+                    
+                    <div class="form-group">
+                        <label>Título <span style="color:red">*</span></label>
+                        <input type="text" id="noteTitle" class="form-control" required maxlength="100" placeholder="Título de la nota">
+                        <small id="error-title" style="color: red; display: none;"></small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Contenido</label>
+                        <textarea id="noteContent" class="form-control" rows="6" placeholder="Escribe tu idea aquí..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Color</label>
+                        <div class="color-picker">
+                            <div class="color-option selected" style="background: #3498db;" onclick="selectColor(this, '#3498db')"></div>
+                            <div class="color-option" style="background: #e74c3c;" onclick="selectColor(this, '#e74c3c')"></div>
+                            <div class="color-option" style="background: #2ecc71;" onclick="selectColor(this, '#2ecc71')"></div>
+                            <div class="color-option" style="background: #f1c40f;" onclick="selectColor(this, '#f1c40f')"></div>
+                            <div class="color-option" style="background: #9b59b6;" onclick="selectColor(this, '#9b59b6')"></div>
+                            <div class="color-option" style="background: #34495e;" onclick="selectColor(this, '#34495e')"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                        <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Nota</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Toasts -->
+        <div id="toastContainer" class="toast-container"></div>
+    </div>
+
+    <!-- Scripts -->
+    <th:block layout:fragment="scripts">
+        <script>
+            let allNotes = [];
+
+            document.addEventListener('DOMContentLoaded', () => {
+                fetchNotes();
+            });
+
+            async function fetchNotes() {
+                try {
+                    const response = await fetch('/api/notes');
+                    if (!response.ok) throw new Error('Error al cargar notas');
+                    allNotes = await response.json();
+                    renderNotes(allNotes);
+                } catch (error) {
+                    showToast('Error al conectar con el servidor', 'error');
+                    document.getElementById('notesContainer').innerHTML = '<p style="color: red;">Error al cargar las notas.</p>';
+                }
+            }
+
+            function renderNotes(notes) {
+                const container = document.getElementById('notesContainer');
+                container.innerHTML = '';
+
+                if (notes.length === 0) {
+                    container.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <i class="ph ph-note-blank" style="font-size: 3rem; opacity: 0.5;"></i>
+                            <p style="margin-top: 10px;">Aún no tienes notas. ¡Crea la primera!</p>
+                        </div>`;
+                    return;
+                }
+
+                notes.forEach(note => {
+                    const dateText = new Date(note.updatedAt || note.createdAt).toLocaleDateString('es-ES', {day: '2-digit', month: 'short', year: 'numeric'});
+                    
+                    const card = document.createElement('div');
+                    card.className = 'note-card';
+                    card.style.background = note.color || '#3498db';
+                    
+                    card.innerHTML = `
+                        <div class="note-title">${escapeHtml(note.title)}</div>
+                        <div class="note-content">${escapeHtml(note.content || '')}</div>
+                        <div class="note-meta">
+                            <span><i class="ph ph-calendar"></i> ${dateText}</span>
+                            <div class="note-actions">
+                                <button onclick="editNote(${note.id})" title="Editar"><i class="ph ph-pencil-simple"></i></button>
+                                <button onclick="deleteNote(${note.id})" title="Eliminar"><i class="ph ph-trash"></i></button>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            function filterNotes() {
+                const search = document.getElementById('searchInput').value.toLowerCase();
+                const filtered = allNotes.filter(note => 
+                    note.title.toLowerCase().includes(search) || 
+                    (note.content && note.content.toLowerCase().includes(search))
+                );
+                renderNotes(filtered);
+            }
+
+            async function saveNote(event) {
+                event.preventDefault();
+                document.getElementById('error-title').style.display = 'none';
+
+                const id = document.getElementById('noteId').value;
+                const isUpdate = id !== "";
+
+                const dto = {
+                    title: document.getElementById('noteTitle').value,
+                    content: document.getElementById('noteContent').value,
+                    color: document.getElementById('noteColor').value
+                };
+
+                const url = isUpdate ? `/api/notes/${id}` : '/api/notes';
+                const method = isUpdate ? 'PUT' : 'POST';
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dto)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 400) {
+                            const errorData = await response.json();
+                            if (errorData.validationErrors && errorData.validationErrors.title) {
+                                document.getElementById('error-title').innerText = errorData.validationErrors.title;
+                                document.getElementById('error-title').style.display = 'block';
+                            } else {
+                                showToast(errorData.message || 'Datos inválidos', 'error');
+                            }
+                            return;
+                        }
+                        throw new Error('Error de servidor');
+                    }
+
+                    showToast(isUpdate ? 'Nota actualizada' : 'Nota creada', 'success');
+                    closeModal();
+                    fetchNotes();
+                } catch (error) {
+                    showToast('Hubo un problema al guardar', 'error');
+                }
+            }
+
+            async function deleteNote(id) {
+                if (!confirm("¿Seguro que quieres eliminar esta nota?")) return;
+
+                try {
+                    const response = await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        showToast('Nota eliminada', 'success');
+                        fetchNotes();
+                    } else {
+                        showToast('Error al eliminar', 'error');
+                    }
+                } catch (e) {
+                    showToast('Error de red', 'error');
+                }
+            }
+
+            function selectColor(element, hex) {
+                document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+                element.classList.add('selected');
+                document.getElementById('noteColor').value = hex;
+            }
+
+            function openModal() {
+                document.getElementById('noteForm').reset();
+                document.getElementById('noteId').value = "";
+                document.getElementById('modalTitle').innerText = "Nueva Nota";
+                document.getElementById('error-title').style.display = 'none';
+                
+                // Select default color
+                selectColor(document.querySelector('.color-option'), '#3498db');
+                
+                document.getElementById('noteModal').classList.add('active');
+            }
+
+            function closeModal() {
+                document.getElementById('noteModal').classList.remove('active');
+            }
+
+            function editNote(id) {
+                const note = allNotes.find(n => n.id === id);
+                if (!note) return;
+
+                document.getElementById('noteId').value = note.id;
+                document.getElementById('noteTitle').value = note.title;
+                document.getElementById('noteContent').value = note.content || '';
+                
+                // Set color
+                const colorHex = note.color || '#3498db';
+                document.getElementById('noteColor').value = colorHex;
+                
+                // Find and select the right color circle visually
+                document.querySelectorAll('.color-option').forEach(el => {
+                    el.classList.remove('selected');
+                    // We compare hex values (might need to handle case sensitivity)
+                    if (el.style.backgroundColor.replace(/\s/g, '') === hexToRgb(colorHex).replace(/\s/g, '')) {
+                        el.classList.add('selected');
+                    } else if (el.getAttribute('onclick').includes(colorHex)) {
+                        el.classList.add('selected');
+                    }
+                });
+
+                document.getElementById('modalTitle').innerText = "Editar Nota";
+                document.getElementById('noteModal').classList.add('active');
+            }
+
+            // Utils
+            function showToast(message, type = 'success') {
+                const container = document.getElementById('toastContainer');
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.innerHTML = `<i class="ph ${type === 'success' ? 'ph-check-circle' : 'ph-warning-circle'}"></i> ${message}`;
+                container.appendChild(toast);
+                setTimeout(() => toast.classList.add('show'), 10);
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+
+            function escapeHtml(unsafe) {
+                return (unsafe || '')
+                     .replace(/&/g, "&amp;")
+                     .replace(/</g, "&lt;")
+                     .replace(/>/g, "&gt;")
+                     .replace(/"/g, "&quot;")
+                     .replace(/'/g, "&#039;");
+            }
+
+            function hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})` : null;
+            }
+        </script>
+    </th:block>
+</body>
+</html>

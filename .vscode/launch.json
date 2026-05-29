@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-InteractivaApplication<interactiva>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.agenda.interactiva.InteractivaApplication",
+            "projectName": "interactiva",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

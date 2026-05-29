@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{fragments/plantilla_base}">
+<head>
+    <title>Calendario - Agenda</title>
+    
+    <!-- FullCalendar JS (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <!-- FullCalendar Locales (Español) -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales/es.global.min.js"></script>
+
+    <style layout:fragment="css">
+        /* Personalización de FullCalendar estilo Glassmorphism Premium */
+        #calendar {
+            max-width: 100%;
+            margin: 0 auto;
+            font-family: var(--font-primary);
+        }
+
+        .fc {
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        .fc .fc-toolbar-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .fc .fc-button-primary {
+            background-color: var(--primary-color) !important;
+            border-color: var(--primary-color) !important;
+            color: white !important;
+            border-radius: var(--radius-sm);
+            text-transform: capitalize;
+            box-shadow: none !important;
+            transition: var(--transition);
+        }
+
+        .fc .fc-button-primary:hover {
+            background-color: var(--primary-hover) !important;
+            transform: translateY(-2px);
+        }
+
+        .fc .fc-button-primary:disabled {
+            background-color: #a0a0a0 !important;
+            border-color: #a0a0a0 !important;
+            transform: none;
+        }
+        
+        .fc .fc-button-active {
+            background-color: var(--text-primary) !important;
+            border-color: var(--text-primary) !important;
+        }
+
+        .fc-theme-standard td, .fc-theme-standard th, .fc-theme-standard .fc-scrollgrid {
+            border-color: rgba(255, 255, 255, 0.5); /* Bordes suaves */
+        }
+
+        .fc .fc-daygrid-day.fc-day-today {
+            background-color: rgba(46, 204, 113, 0.1) !important; /* Resaltar día actual */
+        }
+        
+        .fc-daygrid-event {
+            border-radius: 4px;
+            padding: 3px 5px;
+            font-size: 0.85em;
+            font-weight: 500;
+            border: none !important;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .fc-daygrid-event:hover {
+            transform: scale(1.03);
+            filter: brightness(1.1);
+        }
+
+        /* Modal Styles para Calendario */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content {
+            background: var(--bg-color); width: 100%; max-width: 500px;
+            padding: 24px; border-radius: var(--radius-lg);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            transform: translateY(-20px); transition: transform 0.3s;
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 500; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: rgba(255,255,255,0.5); font-family: inherit; }
+        
+        .color-picker { display: flex; gap: 10px; margin-top: 8px; }
+        .color-option { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; }
+        .color-option:hover { transform: scale(1.1); }
+        .color-option.selected { border-color: var(--text-primary); transform: scale(1.1); }
+
+        /* Toasts */
+        .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 12px 20px; border-radius: var(--radius-sm); color: white; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); transform: translateX(120%); transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); display: flex; align-items: center; gap: 10px; }
+        .toast.show { transform: translateX(0); }
+        .toast-success { background: #2ecc71; }
+        .toast-error { background: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div layout:fragment="contenido">
+        
+        <div class="dashboard-header" style="margin-bottom: 20px;">
+            <div>
+                <h2>Calendario Interactivo</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Visualiza y organiza tus eventos arrastrándolos por la cuadrícula.</p>
+            </div>
+            <button class="btn btn-primary" onclick="openModal()"><i class="ph ph-plus"></i> Nuevo Evento</button>
+        </div>
+
+        <!-- Contenedor del Calendario -->
+        <div id="calendar"></div>
+
+        <!-- Modal para Crear/Editar Evento -->
+        <div id="eventModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Nuevo Evento</h3>
+                    <button class="icon-btn" onclick="closeModal()"><i class="ph ph-x"></i></button>
+                </div>
+                
+                <form id="eventForm" onsubmit="saveEvent(event)">
+                    <input type="hidden" id="eventId">
+                    <input type="hidden" id="eventColor" value="#3498db">
+                    
+                    <div class="form-group">
+                        <label>Título <span style="color:red">*</span></label>
+                        <input type="text" id="eventTitle" class="form-control" required maxlength="100" placeholder="Ej: Reunión de equipo">
+                        <small id="error-title" style="color: red; display: none;"></small>
+                    </div>
+                    
+                    <div style="display: flex; gap: 16px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Fecha y Hora Inicio <span style="color:red">*</span></label>
+                            <input type="datetime-local" id="eventStart" class="form-control" required>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Fecha y Hora Fin <span style="color:red">*</span></label>
+                            <input type="datetime-local" id="eventEnd" class="form-control" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Ubicación</label>
+                        <input type="text" id="eventLocation" class="form-control" placeholder="Ej: Sala de conferencias B o Enlace de Meet">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Recordatorio por Correo</label>
+                        <select id="eventReminder" class="form-control">
+                            <option value="none">Sin recordatorio</option>
+                            <option value="15m">15 minutos antes</option>
+                            <option value="1h">1 hora antes</option>
+                            <option value="1d">1 día antes</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Descripción</label>
+                        <textarea id="eventDesc" class="form-control" rows="2" placeholder="Detalles adicionales..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Color (Prioridad o Categoría)</label>
+                        <div class="color-picker">
+                            <!-- Azul (Normal) -->
+                            <div class="color-option selected" style="background: #3498db;" onclick="selectColor(this, '#3498db')"></div>
+                            <!-- Rojo (Importante) -->
+                            <div class="color-option" style="background: #e74c3c;" onclick="selectColor(this, '#e74c3c')"></div>
+                            <!-- Verde (Personal) -->
+                            <div class="color-option" style="background: #2ecc71;" onclick="selectColor(this, '#2ecc71')"></div>
+                            <!-- Amarillo (Llamada/Aviso) -->
+                            <div class="color-option" style="background: #f1c40f;" onclick="selectColor(this, '#f1c40f')"></div>
+                            <!-- Morado (Estudio/Proyecto) -->
+                            <div class="color-option" style="background: #9b59b6;" onclick="selectColor(this, '#9b59b6')"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                        <div>
+                            <button type="button" id="btnDeleteEvent" class="btn btn-outline" style="color: var(--danger-color); border-color: var(--danger-color); display: none;" onclick="deleteEvent()">Eliminar</button>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Guardar</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Toasts -->
+        <div id="toastContainer" class="toast-container"></div>
+    </div>
+
+    <!-- Scripts de la vista -->
+    <th:block layout:fragment="scripts">
+        <script>
+            let calendar;
+
+            document.addEventListener('DOMContentLoaded', function() {
+                var calendarEl = document.getElementById('calendar');
+                
+                // Configuración de FullCalendar
+                calendar = new FullCalendar.Calendar(calendarEl, {
+                    locale: 'es',
+                    initialView: 'dayGridMonth',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    },
+                    editable: true,       // Permite arrastrar eventos
+                    selectable: true,     // Permite clickar en días para crear eventos
+                    dayMaxEvents: true,   // Limita visualmente muchos eventos en un día
+                    
+                    // Configurar el origen de datos desde la API
+                    events: async function(info, successCallback, failureCallback) {
+                        try {
+                            const response = await fetch('/api/events');
+                            if (!response.ok) throw new Error('Network error');
+                            const data = await response.json();
+                            
+                            // Transformar el formato de la Base de Datos al que espera FullCalendar
+                            const eventsMap = data.map(event => ({
+                                id: event.id,
+                                title: event.title,
+                                start: event.startTime,
+                                end: event.endTime,
+                                backgroundColor: event.color || '#3498db',
+                                borderColor: event.color || '#3498db',
+                                extendedProps: {
+                                    description: event.description,
+                                    location: event.location
+                                }
+                            }));
+                            successCallback(eventsMap);
+                        } catch (error) {
+                            failureCallback(error);
+                            showToast('Error al cargar eventos', 'error');
+                        }
+                    },
+                    
+                    // Acción: Clickar en un día vacío
+                    select: function(info) {
+                        openModal(info.startStr, info.endStr);
+                    },
+                    
+                    // Acción: Clickar en un evento existente
+                    eventClick: function(info) {
+                        openEditModal(info.event);
+                    },
+                    
+                    // Acción: Soltar evento tras arrastrarlo (Drag & Drop)
+                    eventDrop: function(info) {
+                        updateEventDates(info.event);
+                    },
+                    
+                    // Acción: Redimensionar evento (cambiar fecha de fin)
+                    eventResize: function(info) {
+                        updateEventDates(info.event);
+                    }
+                });
+                
+                calendar.render();
+            });
+
+            // ==========================================
+            // GUARDAR / ACTUALIZAR EVENTO API
+            // ==========================================
+            async function saveEvent(e) {
+                e.preventDefault();
+                document.getElementById('error-title').style.display = 'none';
+
+                const id = document.getElementById('eventId').value;
+                const isUpdate = id !== "";
+
+                const reminderVal = document.getElementById('eventReminder').value;
+                let reminderTimes = null;
+                if (reminderVal !== 'none') {
+                    const startDate = new Date(document.getElementById('eventStart').value);
+                    if (reminderVal === '15m') startDate.setMinutes(startDate.getMinutes() - 15);
+                    if (reminderVal === '1h') startDate.setHours(startDate.getHours() - 1);
+                    if (reminderVal === '1d') startDate.setDate(startDate.getDate() - 1);
+                    
+                    // Convertir a formato ISO local (sin Z)
+                    startDate.setMinutes(startDate.getMinutes() - startDate.getTimezoneOffset());
+                    reminderTimes = [startDate.toISOString().slice(0, 19)];
+                }
+
+                const dto = {
+                    title: document.getElementById('eventTitle').value,
+                    description: document.getElementById('eventDesc').value,
+                    startTime: document.getElementById('eventStart').value,
+                    endTime: document.getElementById('eventEnd').value,
+                    location: document.getElementById('eventLocation').value,
+                    color: document.getElementById('eventColor').value,
+                    reminderTimes: reminderTimes
+                };
+
+                const url = isUpdate ? `/api/events/${id}` : '/api/events';
+                const method = isUpdate ? 'PUT' : 'POST';
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dto)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 400) {
+                            const err = await response.json();
+                            if (err.validationErrors && err.validationErrors.title) {
+                                document.getElementById('error-title').innerText = err.validationErrors.title;
+                                document.getElementById('error-title').style.display = 'block';
+                            } else {
+                                showToast(err.message || 'Error de validación', 'error');
+                            }
+                            return;
+                        }
+                        throw new Error('Server Error');
+                    }
+
+                    showToast(isUpdate ? 'Evento actualizado' : 'Evento creado', 'success');
+                    closeModal();
+                    calendar.refetchEvents(); // Recargar calendario visualmente
+                } catch (error) {
+                    showToast('Ocurrió un error al guardar', 'error');
+                }
+            }
+
+            // ==========================================
+            // ACTUALIZAR FECHAS POR DRAG & DROP
+            // ==========================================
+            async function updateEventDates(fcEvent) {
+                const id = fcEvent.id;
+                
+                // Formatear fechas para Java LocalDateTime ISO-8601
+                const formatDate = (dateObj) => {
+                    if(!dateObj) return null;
+                    const d = new Date(dateObj);
+                    // Ajustar timezone local
+                    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                    return d.toISOString().slice(0, 19);
+                };
+
+                const dto = {
+                    title: fcEvent.title,
+                    description: fcEvent.extendedProps.description,
+                    startTime: formatDate(fcEvent.start),
+                    endTime: formatDate(fcEvent.end || fcEvent.start), // Si no hay fin, usar el mismo inicio
+                    location: fcEvent.extendedProps.location,
+                    color: fcEvent.backgroundColor
+                };
+
+                try {
+                    const response = await fetch(`/api/events/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dto)
+                    });
+                    
+                    if (response.ok) {
+                        showToast('Fechas del evento actualizadas', 'success');
+                    } else {
+                        throw new Error('Failed');
+                    }
+                } catch (e) {
+                    showToast('Error al mover el evento', 'error');
+                    fcEvent.revert(); // Devolver el evento a su sitio original si falla la DB
+                }
+            }
+
+            // ==========================================
+            // ELIMINAR EVENTO
+            // ==========================================
+            async function deleteEvent() {
+                const id = document.getElementById('eventId').value;
+                if (!id || !confirm("¿Seguro que deseas eliminar este evento?")) return;
+
+                try {
+                    const response = await fetch(`/api/events/${id}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        showToast('Evento eliminado', 'success');
+                        closeModal();
+                        calendar.refetchEvents();
+                    } else {
+                        showToast('Error al eliminar', 'error');
+                    }
+                } catch (e) {
+                    showToast('Error de conexión', 'error');
+                }
+            }
+
+            // ==========================================
+            // LÓGICA DE INTERFAZ Y MODALES
+            // ==========================================
+            function openModal(startStr = '', endStr = '') {
+                document.getElementById('eventForm').reset();
+                document.getElementById('eventId').value = "";
+                document.getElementById('modalTitle').innerText = "Nuevo Evento";
+                document.getElementById('btnDeleteEvent').style.display = 'none';
+                document.getElementById('error-title').style.display = 'none';
+                
+                // Asignar fechas por defecto si se ha clickado en el calendario
+                if (startStr) {
+                    // Truncar para input datetime-local
+                    document.getElementById('eventStart').value = startStr.length > 10 ? startStr.slice(0,16) : startStr + "T09:00";
+                    document.getElementById('eventEnd').value = endStr.length > 10 ? endStr.slice(0,16) : endStr + "T10:00";
+                }
+                document.getElementById('eventReminder').value = 'none';
+                
+                selectColor(document.querySelector('.color-option'), '#3498db');
+                document.getElementById('eventModal').classList.add('active');
+            }
+
+            function openEditModal(fcEvent) {
+                document.getElementById('eventId').value = fcEvent.id;
+                document.getElementById('eventTitle').value = fcEvent.title;
+                document.getElementById('eventDesc').value = fcEvent.extendedProps.description || '';
+                document.getElementById('eventLocation').value = fcEvent.extendedProps.location || '';
+                document.getElementById('eventReminder').value = 'none'; // No se traen del backend en la vista actual
+                
+                const formatDateLocal = (dateObj) => {
+                    if(!dateObj) return '';
+                    const d = new Date(dateObj);
+                    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                    return d.toISOString().slice(0, 16);
+                };
+
+                document.getElementById('eventStart').value = formatDateLocal(fcEvent.start);
+                document.getElementById('eventEnd').value = formatDateLocal(fcEvent.end || fcEvent.start);
+                
+                const color = fcEvent.backgroundColor || '#3498db';
+                document.getElementById('eventColor').value = color;
+                
+                // Seleccionar círculo de color visualmente
+                document.querySelectorAll('.color-option').forEach(el => {
+                    el.classList.remove('selected');
+                    if (el.getAttribute('onclick').includes(color)) {
+                        el.classList.add('selected');
+                    }
+                });
+
+                document.getElementById('modalTitle').innerText = "Editar Evento";
+                document.getElementById('btnDeleteEvent').style.display = 'block';
+                document.getElementById('error-title').style.display = 'none';
+                document.getElementById('eventModal').classList.add('active');
+            }
+
+            function closeModal() {
+                document.getElementById('eventModal').classList.remove('active');
+            }
+
+            function selectColor(element, hex) {
+                document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+                if (element) element.classList.add('selected');
+                document.getElementById('eventColor').value = hex;
+            }
+
+            function showToast(message, type = 'success') {
+                const container = document.getElementById('toastContainer');
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.innerHTML = `<i class="ph ${type === 'success' ? 'ph-check-circle' : 'ph-warning-circle'}"></i> ${message}`;
+                container.appendChild(toast);
+                setTimeout(() => toast.classList.add('show'), 10);
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+        </script>
+    </th:block>
+</body>
+</html>

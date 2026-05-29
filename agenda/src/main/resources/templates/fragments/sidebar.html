@@ -1,0 +1,58 @@
+<!-- Fragmento: Barra Lateral (Sidebar) -->
+<div th:fragment="sidebar" class="sidebar glass-panel">
+    
+    <div class="sidebar-header">
+        <div class="logo">
+            <i class="ph ph-calendar-check logo-icon"></i>
+            <span class="logo-text">AgendaApp</span>
+        </div>
+    </div>
+    
+    <div class="sidebar-menu">
+        <p class="menu-label">PRINCIPAL</p>
+        
+        <a th:href="@{/panel}" class="menu-item" id="menu-panel">
+            <i class="ph ph-squares-four"></i>
+            <span>Panel General</span>
+        </a>
+        
+        <a th:href="@{/calendario}" class="menu-item" id="menu-calendario">
+            <i class="ph ph-calendar-blank"></i>
+            <span>Calendario</span>
+        </a>
+        
+        <a th:href="@{/tareas}" class="menu-item" id="menu-tareas">
+            <i class="ph ph-check-square"></i>
+            <span>Mis Tareas</span>
+        </a>
+        
+        <a th:href="@{/notas}" class="menu-item" id="menu-notas">
+            <i class="ph ph-notebook"></i>
+            <span>Notas Rápidas</span>
+        </a>
+
+        <a th:href="@{/finanzas}" class="menu-item" id="menu-finanzas">
+            <i class="ph ph-wallet"></i>
+            <span>Finanzas</span>
+        </a>
+
+        <a th:href="@{/foco}" class="menu-item" id="menu-foco">
+            <i class="ph ph-timer"></i>
+            <span>Modo Foco</span>
+        </a>
+    </div>
+    
+    <div class="sidebar-bottom">
+        <a th:href="@{/perfil}" class="menu-item" id="menu-perfil">
+            <i class="ph ph-user-circle"></i>
+            <span>Mi Perfil</span>
+        </a>
+        
+        <form th:action="@{/cerrar_sesion}" method="post">
+            <button type="submit" class="menu-item logout-btn">
+                <i class="ph ph-sign-out"></i>
+                <span>Cerrar Sesión</span>
+            </button>
+        </form>
+    </div>
+</div>

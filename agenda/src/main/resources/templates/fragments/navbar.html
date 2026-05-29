@@ -1,0 +1,30 @@
+<!-- Fragmento: Barra Superior (Navbar) -->
+<header th:fragment="navbar" class="navbar glass-panel">
+    
+    <div class="navbar-left">
+        <!-- Saludo dinámico con el nombre del usuario autenticado -->
+        <h2 class="page-title">¡Hola, <span th:text="${#authentication.name}">Usuario</span>! 👋</h2>
+        <p class="page-subtitle">Aquí tienes el resumen de tu día.</p>
+    </div>
+    
+    <div class="navbar-right">
+        <!-- Barra de búsqueda moderna -->
+        <div class="search-bar">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" placeholder="Buscar eventos o tareas...">
+        </div>
+        
+        <!-- Toggle de Tema Oscuro/Claro — llama a toggleTheme() de app.js -->
+        <button class="icon-btn" id="theme-toggle-btn" title="Cambiar tema" style="position: relative;">
+            <!-- El ícono se actualiza dinámicamente por app.js según el tema activo -->
+            <i class="ph ph-moon" id="theme-toggle-icon"></i>
+        </button>
+        
+        <!-- Avatar dinámico: usa la inicial del nombre del usuario -->
+        <div class="user-avatar" th:with="uname=${#authentication.name}">
+            <img th:src="'https://ui-avatars.com/api/?name=' + ${uname} + '&background=0066cc&color=fff&rounded=true&bold=true'"
+                 alt="Avatar de usuario">
+        </div>
+    </div>
+    
+</header>

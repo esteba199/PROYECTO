@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{fragments/plantilla_base}">
+<head>
+    <title>Finanzas Personales - Agenda</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style layout:fragment="css">
+        .finance-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .finance-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .balance-card {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.8), rgba(41, 128, 185, 0.8));
+            color: white;
+            padding: 30px;
+            border-radius: var(--radius-lg);
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(52, 152, 219, 0.3);
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .balance-card::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 10%, transparent 40%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+
+        .balance-title { font-size: 1.1rem; opacity: 0.9; margin-bottom: 10px; position: relative; z-index: 1; }
+        .balance-amount { font-size: 3.5rem; font-weight: 700; position: relative; z-index: 1; font-family: var(--font-headers); }
+        .balance-amount.negative { color: #ffcccc; }
+
+        .stats-row {
+            display: flex;
+            gap: 15px;
+            justify-content: space-between;
+            margin-top: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: var(--radius-md);
+            flex: 1;
+        }
+        
+        .stat-box.income { border-left: 4px solid #2ecc71; }
+        .stat-box.expense { border-left: 4px solid #e74c3c; }
+
+        .stat-label { font-size: 0.85rem; opacity: 0.8; }
+        .stat-val { font-size: 1.5rem; font-weight: 600; margin-top: 5px; }
+
+        .tx-list {
+            list-style: none;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        /* Custom Scrollbar for tx-list */
+        .tx-list::-webkit-scrollbar { width: 6px; }
+        .tx-list::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 10px; }
+        .tx-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
+
+        .tx-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid var(--glass-border);
+            transition: var(--transition);
+        }
+
+        .tx-item:hover { background: rgba(255,255,255,0.5); }
+        .tx-item:last-child { border-bottom: none; }
+
+        .tx-icon {
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; margin-right: 15px;
+        }
+
+        .tx-icon.income { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+        .tx-icon.expense { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+
+        .tx-details { flex: 1; }
+        .tx-title { font-weight: 600; color: var(--text-primary); }
+        .tx-date { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
+        .tx-amount { font-weight: 700; font-family: var(--font-headers); }
+        .tx-amount.income { color: #27ae60; }
+        .tx-amount.expense { color: #c0392b; }
+        
+        .tx-actions button {
+            background: transparent; border: none; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; padding: 5px; transition: color 0.2s;
+        }
+        .tx-actions button:hover { color: var(--danger-color); }
+
+        /* Modals and Toasts */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content { background: var(--bg-color); width: 100%; max-width: 500px; padding: 24px; border-radius: var(--radius-lg); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); transform: translateY(-20px); transition: transform 0.3s; }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 500; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: rgba(255,255,255,0.5); font-family: inherit; }
+        
+        .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 12px 20px; border-radius: var(--radius-sm); color: white; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); transform: translateX(120%); transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); display: flex; align-items: center; gap: 10px; }
+        .toast.show { transform: translateX(0); }
+        .toast-success { background: #2ecc71; }
+        .toast-error { background: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div layout:fragment="contenido">
+        
+        <div class="dashboard-header">
+            <div>
+                <h2>Finanzas Personales</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Controla tus ingresos y gastos</p>
+            </div>
+            <button class="btn btn-primary" onclick="openModal()"><i class="ph ph-plus"></i> Nuevo Movimiento</button>
+        </div>
+
+        <div class="balance-card">
+            <div class="balance-title">Balance Total</div>
+            <div class="balance-amount" id="totalBalance">$0.00</div>
+            
+            <div class="stats-row">
+                <div class="stat-box income">
+                    <div class="stat-label">Ingresos</div>
+                    <div class="stat-val" id="totalIncome">$0.00</div>
+                </div>
+                <div class="stat-box expense">
+                    <div class="stat-label">Gastos</div>
+                    <div class="stat-val" id="totalExpense">$0.00</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="finance-grid">
+            <!-- Gráficos -->
+            <div class="glass-panel" style="padding: 24px; border-radius: var(--radius-lg);">
+                <h3>Análisis Mensual</h3>
+                <div style="height: 300px; width: 100%; margin-top: 20px;">
+                    <canvas id="financeChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Lista de Movimientos -->
+            <div class="glass-panel" style="padding: 24px; border-radius: var(--radius-lg);">
+                <h3 style="margin-bottom: 20px;">Últimos Movimientos</h3>
+                <ul class="tx-list" id="txList">
+                    <p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">Cargando movimientos...</p>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Modal para Crear/Editar Transacción -->
+        <div id="txModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Nuevo Movimiento</h3>
+                    <button class="icon-btn" onclick="closeModal()"><i class="ph ph-x"></i></button>
+                </div>
+                
+                <form id="txForm" onsubmit="saveTransaction(event)">
+                    <input type="hidden" id="txId">
+                    
+                    <div style="display: flex; gap: 16px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Tipo <span style="color:red">*</span></label>
+                            <select id="txType" class="form-control" onchange="updateCategories()">
+                                <option value="EXPENSE">Gasto</option>
+                                <option value="INCOME">Ingreso</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Cantidad <span style="color:red">*</span></label>
+                            <input type="number" id="txAmount" class="form-control" required min="0.01" step="0.01" placeholder="0.00">
+                            <small id="error-amount" style="color: red; display: none;"></small>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 16px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Categoría <span style="color:red">*</span></label>
+                            <select id="txCategory" class="form-control" required>
+                                <!-- Se llena vía JS -->
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Fecha <span style="color:red">*</span></label>
+                            <input type="date" id="txDate" class="form-control" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Descripción</label>
+                        <input type="text" id="txDesc" class="form-control" placeholder="Ej: Compra en supermercado">
+                    </div>
+                    
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                        <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="toastContainer" class="toast-container"></div>
+    </div>
+
+    <!-- Scripts de la vista -->
+    <th:block layout:fragment="scripts">
+        <script>
+            let allTransactions = [];
+            let chartInstance = null;
+
+            const expenseCategories = ['Alimentación', 'Transporte', 'Vivienda', 'Ocio', 'Salud', 'Educación', 'Otros'];
+            const incomeCategories = ['Salario', 'Inversiones', 'Ventas', 'Regalos', 'Otros'];
+
+            document.addEventListener('DOMContentLoaded', () => {
+                // Set default date to today
+                document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+                updateCategories();
+                fetchTransactions();
+            });
+
+            function updateCategories() {
+                const type = document.getElementById('txType').value;
+                const select = document.getElementById('txCategory');
+                select.innerHTML = '';
+                const cats = type === 'INCOME' ? incomeCategories : expenseCategories;
+                cats.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c;
+                    opt.innerText = c;
+                    select.appendChild(opt);
+                });
+            }
+
+            async function fetchTransactions() {
+                try {
+                    const response = await fetch('/api/transactions');
+                    if (response.status === 403) {
+                        showAccessRestrictedModal();
+                        return;
+                    }
+                    if (!response.ok) throw new Error('Error al cargar transacciones');
+                    allTransactions = await response.json();
+                    
+                    renderDashboard();
+                } catch (error) {
+                    showToast('Error al conectar con el servidor', 'error');
+                }
+            }
+
+            function renderDashboard() {
+                let totalIncome = 0;
+                let totalExpense = 0;
+
+                const listEl = document.getElementById('txList');
+                listEl.innerHTML = '';
+
+                if (allTransactions.length === 0) {
+                    listEl.innerHTML = '<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">No hay movimientos aún.</p>';
+                }
+
+                // Render list and calculate totals
+                allTransactions.forEach(tx => {
+                    const amount = parseFloat(tx.amount);
+                    if (tx.type === 'INCOME') totalIncome += amount;
+                    else totalExpense += amount;
+
+                    const dateObj = new Date(tx.date + 'T12:00:00'); // Force midday to avoid timezone shift on just-date
+                    const dateText = dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+                    
+                    const isInc = tx.type === 'INCOME';
+                    const icon = isInc ? 'ph-arrow-up-right' : 'ph-arrow-down-left';
+                    const sign = isInc ? '+' : '-';
+
+                    const li = document.createElement('li');
+                    li.className = 'tx-item';
+                    li.innerHTML = `
+                        <div style="display:flex; align-items:center; flex:1;">
+                            <div class="tx-icon ${isInc ? 'income' : 'expense'}"><i class="ph ${icon}"></i></div>
+                            <div class="tx-details">
+                                <div class="tx-title">${escapeHtml(tx.category)}</div>
+                                <div class="tx-date">${dateText} - ${escapeHtml(tx.description || '')}</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap: 15px;">
+                            <div class="tx-amount ${isInc ? 'income' : 'expense'}">${sign}$${amount.toFixed(2)}</div>
+                            <div class="tx-actions">
+                                <button onclick="deleteTransaction(${tx.id})" title="Eliminar"><i class="ph ph-trash"></i></button>
+                            </div>
+                        </div>
+                    `;
+                    listEl.appendChild(li);
+                });
+
+                const balance = totalIncome - totalExpense;
+                
+                const balEl = document.getElementById('totalBalance');
+                balEl.innerText = `$${balance.toFixed(2)}`;
+                if(balance < 0) balEl.classList.add('negative');
+                else balEl.classList.remove('negative');
+
+                document.getElementById('totalIncome').innerText = `$${totalIncome.toFixed(2)}`;
+                document.getElementById('totalExpense').innerText = `$${totalExpense.toFixed(2)}`;
+
+                updateChart();
+            }
+
+            function updateChart() {
+                const ctx = document.getElementById('financeChart').getContext('2d');
+                
+                // Group expenses by category
+                const expensesByCategory = {};
+                allTransactions.forEach(tx => {
+                    if (tx.type === 'EXPENSE') {
+                        expensesByCategory[tx.category] = (expensesByCategory[tx.category] || 0) + parseFloat(tx.amount);
+                    }
+                });
+
+                const labels = Object.keys(expensesByCategory);
+                const data = Object.values(expensesByCategory);
+
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+
+                if (labels.length === 0) {
+                    // Empty state chart
+                    chartInstance = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Sin datos'],
+                            datasets: [{ data: [1], backgroundColor: ['#e0e0e0'] }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+                    });
+                    return;
+                }
+
+                const colors = ['#e74c3c', '#9b59b6', '#3498db', '#f1c40f', '#e67e22', '#1abc9c', '#34495e'];
+
+                chartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors.slice(0, labels.length),
+                            borderWidth: 0,
+                            hoverOffset: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: { position: 'right', labels: { color: getComputedStyle(document.body).getPropertyValue('--text-primary') } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return ' $' + context.parsed.toFixed(2);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            async function saveTransaction(event) {
+                event.preventDefault();
+                document.getElementById('error-amount').style.display = 'none';
+
+                const id = document.getElementById('txId').value;
+                const isUpdate = id !== "";
+
+                const dto = {
+                    type: document.getElementById('txType').value,
+                    amount: parseFloat(document.getElementById('txAmount').value),
+                    category: document.getElementById('txCategory').value,
+                    date: document.getElementById('txDate').value,
+                    description: document.getElementById('txDesc').value
+                };
+
+                const url = isUpdate ? `/api/transactions/${id}` : '/api/transactions';
+                const method = isUpdate ? 'PUT' : 'POST';
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dto)
+                    });
+
+                    if (response.status === 403) {
+                        closeModal();
+                        showAccessRestrictedModal();
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        if (response.status === 400) {
+                            const err = await response.json();
+                            if (err.validationErrors && err.validationErrors.amount) {
+                                document.getElementById('error-amount').innerText = err.validationErrors.amount;
+                                document.getElementById('error-amount').style.display = 'block';
+                            } else {
+                                showToast(err.message || 'Datos inválidos', 'error');
+                            }
+                            return;
+                        }
+                        throw new Error('Server error');
+                    }
+
+                    showToast('Movimiento guardado', 'success');
+                    closeModal();
+                    fetchTransactions();
+                } catch (error) {
+                    showToast('Error al guardar', 'error');
+                }
+            }
+
+            async function deleteTransaction(id) {
+                if (!confirm("¿Seguro que deseas eliminar este movimiento?")) return;
+
+                try {
+                    const response = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+                    if (response.status === 403) {
+                        showAccessRestrictedModal();
+                        return;
+                    }
+                    if (response.ok) {
+                        showToast('Movimiento eliminado', 'success');
+                        fetchTransactions();
+                    } else {
+                        showToast('Error al eliminar', 'error');
+                    }
+                } catch (e) {
+                    showToast('Error de red', 'error');
+                }
+            }
+
+            function openModal() {
+                document.getElementById('txForm').reset();
+                document.getElementById('txId').value = "";
+                document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('modalTitle').innerText = "Nuevo Movimiento";
+                document.getElementById('error-amount').style.display = 'none';
+                updateCategories();
+                document.getElementById('txModal').classList.add('active');
+            }
+
+            function closeModal() {
+                document.getElementById('txModal').classList.remove('active');
+            }
+
+            function showToast(message, type = 'success') {
+                const container = document.getElementById('toastContainer');
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.innerHTML = `<i class="ph ${type === 'success' ? 'ph-check-circle' : 'ph-warning-circle'}"></i> ${message}`;
+                container.appendChild(toast);
+                setTimeout(() => toast.classList.add('show'), 10);
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+
+            function escapeHtml(unsafe) {
+                return (unsafe || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+            }
+        </script>
+    </th:block>
+</body>
+</html>

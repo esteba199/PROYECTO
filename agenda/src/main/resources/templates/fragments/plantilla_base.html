@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Interactiva</title>
+
+    <!--
+      ★ ANTI-FLASH: Script síncrono que aplica el tema ANTES de cargar CSS.
+        Esto evita el parpadeo blanco→negro al navegar entre secciones.
+        Se ejecuta bloqueando el render, de modo que cuando el CSS cargue,
+        las variables de color ya estarán en modo correcto.
+    -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('agenda-theme') || 'DARK';
+            if(t === 'DARK'){
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
+
+    <!-- Fuentes de Google: Inter y Outfit para un diseño premium -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Iconos Phosphor (Modernos y limpios) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Hojas de estilo principales -->
+    <link rel="stylesheet" th:href="@{/css/variables.css}">
+    <link rel="stylesheet" th:href="@{/css/estilos.css}">
+    <link rel="stylesheet" th:href="@{/css/componentes.css}">
+    
+    <!-- Permite inyectar CSS específico desde otras plantillas -->
+    <th:block layout:fragment="css"></th:block>
+</head>
+<body>
+    
+    <!-- Contenedor principal de la aplicación -->
+    <div class="app-container">
+        
+        <!-- Barra lateral (Sidebar) - Se incluye desde fragmentos/sidebar.html -->
+        <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+        
+        <!-- Contenido principal -->
+        <main class="main-content">
+            <!-- Barra superior (Navbar) - Se incluye desde fragmentos/navbar.html -->
+            <div th:replace="~{fragments/navbar :: navbar}"></div>
+            
+            <!-- Área donde las demás vistas inyectarán su contenido -->
+            <div class="content-area" layout:fragment="contenido">
+                <!-- Contenido dinámico -->
+            </div>
+        </main>
+        
+    </div>
+
+    <!-- Scripts compartidos -->
+    <script th:src="@{/js/app.js}"></script>
+    
+    <!-- Permite inyectar JS específico desde otras plantillas -->
+    <th:block layout:fragment="scripts"></th:block>
+</body>
+</html>

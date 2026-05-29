@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{fragments/plantilla_base}">
+<head>
+    <title>Panel de Control - Agenda</title>
+    <style layout:fragment="css">
+        /* Skeletons para carga (Skeleton Loading) */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.05) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-text { height: 20px; width: 80%; margin-bottom: 10px; }
+        .skeleton-text.short { width: 50%; }
+        .skeleton-title { height: 30px; width: 60%; margin-bottom: 15px; }
+
+        .metric-card { transition: transform 0.2s; }
+        .metric-card:hover { transform: translateY(-5px); }
+
+        .widget-financial {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.2), rgba(41, 128, 185, 0.4));
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            border-radius: var(--radius-md);
+            margin-top: 20px;
+        }
+
+        .balance-value { font-size: 2rem; font-weight: bold; font-family: var(--font-headers); }
+        .balance-value.positive { color: #2ecc71; }
+        .balance-value.negative { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    
+    <div layout:fragment="contenido">
+        <div class="dashboard-header">
+            <h2>Resumen General</h2>
+            <div class="date-display" id="currentDate">Cargando fecha...</div>
+        </div>
+        
+        <!-- Tarjetas de métricas (Widgets Reales) -->
+        <div class="metrics-grid">
+            <div class="metric-card glass-panel" onclick="window.location='/tareas'" style="cursor: pointer;">
+                <div class="metric-icon" style="background: rgba(46, 204, 113, 0.2); color: #2ecc71;">
+                    <i class="ph ph-check-circle"></i>
+                </div>
+                <div class="metric-info">
+                    <h3>Tareas Activas</h3>
+                    <p class="metric-value" id="countTasks"><span class="skeleton skeleton-text short" style="display:inline-block;"></span></p>
+                </div>
+            </div>
+            
+            <div class="metric-card glass-panel" onclick="window.location='/calendario'" style="cursor: pointer;">
+                <div class="metric-icon" style="background: rgba(52, 152, 219, 0.2); color: #3498db;">
+                    <i class="ph ph-calendar-star"></i>
+                </div>
+                <div class="metric-info">
+                    <h3>Próximos Eventos</h3>
+                    <p class="metric-value" id="countEvents"><span class="skeleton skeleton-text short" style="display:inline-block;"></span></p>
+                </div>
+            </div>
+            
+            <div class="metric-card glass-panel" onclick="window.location='/notas'" style="cursor: pointer;">
+                <div class="metric-icon" style="background: rgba(155, 89, 182, 0.2); color: #9b59b6;">
+                    <i class="ph ph-notebook"></i>
+                </div>
+                <div class="metric-info">
+                    <h3>Notas Activas</h3>
+                    <p class="metric-value" id="countNotes"><span class="skeleton skeleton-text short" style="display:inline-block;"></span></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard-content-grid">
+            <!-- Lista de Tareas pendientes -->
+            <div class="dashboard-section glass-panel">
+                <div class="section-header">
+                    <h3>Tareas Urgentes</h3>
+                    <a th:href="@{/tareas}" class="btn btn-sm btn-outline">Ver todas</a>
+                </div>
+                <ul class="task-list-preview" id="urgentTasksList">
+                    <!-- Skeleton Loader inicial -->
+                    <li class="task-item"><div class="skeleton skeleton-text"></div></li>
+                    <li class="task-item"><div class="skeleton skeleton-text"></div></li>
+                    <li class="task-item"><div class="skeleton skeleton-text"></div></li>
+                </ul>
+            </div>
+            
+            <!-- Agenda / Actividad Reciente -->
+            <div class="dashboard-section glass-panel">
+                <div class="section-header">
+                    <h3>Próximos Eventos (Hoy/Mañana)</h3>
+                    <a th:href="@{/calendario}" class="btn btn-sm btn-outline">Mini Calendario</a>
+                </div>
+                <div class="timeline" id="upcomingEventsTimeline">
+                    <!-- Skeleton Loader inicial -->
+                    <div class="timeline-item"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div></div>
+                    <div class="timeline-item"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div></div>
+                </div>
+
+                <!-- Resumen Financiero Rápido -->
+                <div class="widget-financial" id="financialSummary">
+                    <h3 style="margin-top:0; font-size: 1rem; color: var(--text-secondary);">Balance Actual</h3>
+                    <div class="balance-value" id="totalBalance"><span class="skeleton skeleton-text short" style="display:inline-block;"></span></div>
+                    <a th:href="@{/finanzas}" style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; margin-top: 10px; display: block;">Ver detalles financieros &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script para cargar widgets reales -->
+    <th:block layout:fragment="scripts">
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                // Configurar fecha
+                const dateElement = document.getElementById('currentDate');
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                dateElement.textContent = new Date().toLocaleDateString('es-ES', options).replace(/^\w/, c => c.toUpperCase());
+
+                // Cargar datos
+                loadDashboardData();
+            });
+
+            async function loadDashboardData() {
+                try {
+                    // Cargar concurrentemente
+                    const [tasksRes, eventsRes, notesRes, transRes] = await Promise.all([
+                        fetch('/api/tasks'),
+                        fetch('/api/events'),
+                        fetch('/api/notes'),
+                        fetch('/api/transactions')
+                    ]);
+
+                    const tasks = await tasksRes.json();
+                    const events = await eventsRes.json();
+                    const notes = await notesRes.json();
+                    const transactions = await transRes.json();
+
+                    // Renderizar contadores (Widgets)
+                    const activeTasks = tasks.filter(t => t.status !== 'COMPLETED');
+                    document.getElementById('countTasks').textContent = activeTasks.length;
+                    
+                    const upcomingEvents = events.filter(e => new Date(e.startTime) >= new Date());
+                    document.getElementById('countEvents').textContent = upcomingEvents.length;
+                    
+                    document.getElementById('countNotes').textContent = notes.length;
+
+                    // Renderizar Tareas Urgentes (Máx 4, prioridad HIGH o pendientes)
+                    renderUrgentTasks(activeTasks);
+
+                    // Renderizar Próximos Eventos (Máx 3)
+                    renderUpcomingEvents(upcomingEvents);
+
+                    // Renderizar Balance Financiero
+                    renderFinancialBalance(transactions);
+
+                } catch (error) {
+                    console.error("Error cargando dashboard:", error);
+                    // Ocultar skeletons y mostrar error
+                    document.getElementById('urgentTasksList').innerHTML = "<li>Error al cargar tareas</li>";
+                    document.getElementById('upcomingEventsTimeline').innerHTML = "<p>Error al cargar eventos</p>";
+                }
+            }
+
+            function renderUrgentTasks(tasks) {
+                const list = document.getElementById('urgentTasksList');
+                list.innerHTML = '';
+                
+                // Ordenar: HIGH primero, luego MEDIUM, luego LOW
+                const priorityWeight = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
+                tasks.sort((a, b) => priorityWeight[b.priority || 'LOW'] - priorityWeight[a.priority || 'LOW']);
+                
+                const topTasks = tasks.slice(0, 4);
+
+                if (topTasks.length === 0) {
+                    list.innerHTML = "<li style='color: var(--text-secondary); text-align:center;'>¡Todo al día! No hay tareas pendientes.</li>";
+                    return;
+                }
+
+                topTasks.forEach(t => {
+                    const li = document.createElement('li');
+                    li.className = 'task-item';
+                    
+                    const pClass = t.priority === 'HIGH' ? 'badge-high' : (t.priority === 'MEDIUM' ? 'badge-medium' : 'badge-low');
+                    const pText = t.priority === 'HIGH' ? 'Alta' : (t.priority === 'MEDIUM' ? 'Media' : 'Baja');
+
+                    li.innerHTML = `
+                        <label class="custom-checkbox">
+                            <input type="checkbox" disabled>
+                            <span class="checkmark"></span>
+                        </label>
+                        <span class="task-text">${escapeHtml(t.title)}</span>
+                        <span class="badge ${pClass}">${pText}</span>
+                    `;
+                    list.appendChild(li);
+                });
+            }
+
+            function renderUpcomingEvents(events) {
+                const timeline = document.getElementById('upcomingEventsTimeline');
+                timeline.innerHTML = '';
+
+                // Ordenar por fecha de inicio más próxima
+                events.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+                
+                const topEvents = events.slice(0, 3);
+
+                if (topEvents.length === 0) {
+                    timeline.innerHTML = "<p style='color: var(--text-secondary); text-align:center;'>No hay eventos próximos agendados.</p>";
+                    return;
+                }
+
+                topEvents.forEach(e => {
+                    const dateObj = new Date(e.startTime);
+                    
+                    // Comprobar si es hoy
+                    const today = new Date();
+                    const isToday = dateObj.getDate() === today.getDate() && dateObj.getMonth() === today.getMonth();
+                    
+                    let timeLabel = '';
+                    if (isToday) {
+                        timeLabel = "Hoy, " + dateObj.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'});
+                    } else {
+                        timeLabel = dateObj.toLocaleDateString('es-ES', {day:'numeric', month:'short'}) + " " + dateObj.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'});
+                    }
+
+                    const item = document.createElement('div');
+                    item.className = 'timeline-item';
+                    
+                    // Obtener color (default azul)
+                    const color = e.color || '#3498db';
+
+                    item.innerHTML = `
+                        <div class="timeline-time" style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 5px;">${timeLabel}</div>
+                        <div class="timeline-content" style="border-left: 3px solid ${color}; padding-left: 10px; margin-left: 5px; background: rgba(255,255,255,0.02); padding-top: 5px; padding-bottom: 5px; border-radius: 0 4px 4px 0;">
+                            <h4 style="margin: 0; font-size: 1rem;">${escapeHtml(e.title)}</h4>
+                            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-secondary);"><i class="ph ph-map-pin"></i> ${escapeHtml(e.location || 'Sin ubicación')}</p>
+                        </div>
+                    `;
+                    timeline.appendChild(item);
+                });
+            }
+
+            function renderFinancialBalance(transactions) {
+                let totalIncome = 0;
+                let totalExpense = 0;
+
+                transactions.forEach(tx => {
+                    if (tx.type === 'INCOME') totalIncome += parseFloat(tx.amount);
+                    else totalExpense += parseFloat(tx.amount);
+                });
+
+                const balance = totalIncome - totalExpense;
+                const balEl = document.getElementById('totalBalance');
+                
+                balEl.textContent = `$${balance.toFixed(2)}`;
+                
+                if (balance > 0) {
+                    balEl.className = 'balance-value positive';
+                } else if (balance < 0) {
+                    balEl.className = 'balance-value negative';
+                } else {
+                    balEl.className = 'balance-value';
+                }
+            }
+
+            function escapeHtml(unsafe) {
+                return (unsafe || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+            }
+        </script>
+    </th:block>
+</body>
+</html>

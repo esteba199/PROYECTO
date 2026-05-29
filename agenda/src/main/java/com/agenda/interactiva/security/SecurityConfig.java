@@ -10,19 +10,14 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
- * Configuración central de Seguridad (Spring Security).
- * 
- * Anotaciones:
- * - @Configuration: Define que esta clase contiene Beans de configuración de Spring.
- * - @EnableWebSecurity: Habilita la seguridad web en la aplicación.
- * - @EnableMethodSecurity: Permite el control de acceso fino usando @PreAuthorize("hasRole('ADMIN')") etc.
+ * Configuración central de Seguridad usando Sesiones.
+ * Adaptado para Thymeleaf y formularios web clásicos.
  */
 @Configuration
 @EnableWebSecurity
@@ -30,57 +25,45 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
 
     /**
      * Define la cadena de filtros de seguridad HTTP (SecurityFilterChain).
-     * Aquí configuramos qué rutas son públicas, cuáles requieren autenticación,
-     * desactivamos CSRF y configuramos las sesiones sin estado.
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Desactivamos CSRF (Cross-Site Request Forgery) porque no usamos cookies de sesión.
-            // Los JWT son autoejecutables y no vulnerables a CSRF estándar de sesión tradicional.
-            .csrf(csrf -> csrf.disable())
-            
-            // Indicamos que la sesión no debe guardar estados en el servidor (Stateless).
-            // Cada petición debe enviar su token de forma independiente.
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            
             .authorizeHttpRequests(auth -> auth
-                // Endpoints públicos de login y registro
-                .requestMatchers("/api/auth/**").permitAll()
-                
-                // Endpoints de Swagger/OpenAPI abiertos para pruebas
-                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                
-                // Recursos estáticos del frontend (React compilado en resources/static)
-                .requestMatchers("/", "/index.html", "/assets/**", "/favicon.svg", "/icons.svg").permitAll()
-                
-                // Rutas mapeadas en SpaController para la navegación frontend
-                .requestMatchers("/login", "/register", "/dashboard", "/calendar", "/tasks", "/notes", "/profile").permitAll()
-                
-                // Cualquier endpoint REST bajo /api/** requiere autenticación
-                .requestMatchers("/api/**").authenticated()
-                
-                // Cualquier otra solicitud se permite para evitar bloqueos de archivos estáticos
-                .anyRequest().permitAll()
+                // Rutas públicas (Archivos estáticos y páginas de autenticación)
+                .requestMatchers("/css/**", "/js/**", "/images/**", "/fonts/**").permitAll()
+                .requestMatchers("/", "/inicio_sesion", "/registro", "/api/auth/register").permitAll()
+                // El resto requiere estar autenticado
+                .anyRequest().authenticated()
             )
-            
-            // Establecemos el proveedor de autenticación
-            .authenticationProvider(authenticationProvider())
-            
-            // Añadimos nuestro filtro JWT antes del filtro de autenticación estándar de Spring
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            // Configuración del login mediante formulario de Thymeleaf
+            .formLogin(form -> form
+                .loginPage("/inicio_sesion") // Ruta a la vista de login (GET)
+                .loginProcessingUrl("/inicio_sesion") // Ruta donde se envía el form (POST)
+                .defaultSuccessUrl("/panel", true) // Si el login es correcto, va al panel
+                .failureUrl("/inicio_sesion?error=true") // Si falla, recarga con error
+                .permitAll()
+            )
+            // Configuración del logout
+            .logout(logout -> logout
+                .logoutRequestMatcher(new AntPathRequestMatcher("/cerrar_sesion"))
+                .logoutSuccessUrl("/inicio_sesion?logout=true")
+                .invalidateHttpSession(true)
+                .clearAuthentication(true)
+                .deleteCookies("JSESSIONID")
+                .permitAll()
+            )
+            .authenticationProvider(authenticationProvider());
 
         return http.build();
     }
 
     /**
      * Proveedor de autenticación DAO.
-     * Enlaza nuestra base de datos (a través de UserDetailsService) y el encriptador de contraseñas.
      */
     @Bean
     public AuthenticationProvider authenticationProvider() {
@@ -90,18 +73,11 @@ public class SecurityConfig {
         return authProvider;
     }
 
-    /**
-     * Gestor de autenticación oficial para coordinar el login.
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    /**
-     * Encriptador BCrypt.
-     * Utiliza algoritmos hashing seguros e irreversibles de factor variable para cifrar las contraseñas.
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
