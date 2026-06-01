@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 /**
@@ -29,12 +30,16 @@ public class EmailService {
     private String fromEmail;
 
     /**
-     * Envía un correo electrónico en formato HTML de forma segura.
-     * En caso de fallo (por ejemplo, si no se han configurado credenciales reales de Mailjet),
-     * captura la excepción y la registra en logs para no interrumpir el flujo de la aplicación.
+     * Envía un correo electrónico en formato HTML de forma asíncrona.
+     * Al ser @Async, se ejecuta en un hilo separado sin bloquear el flujo principal.
+     * En caso de fallo, captura la excepción y la registra en logs.
      */
+    @Async
     public void sendEmail(String to, String subject, String htmlContent) {
         try {
+            log.info("Intentando enviar correo a: {} con asunto: '{}'", to, subject);
+            log.info("Usando remitente: {}", fromEmail);
+            
             MimeMessage message = mailSender.createMimeMessage();
             // MimeMessageHelper ayuda a configurar campos adjuntos, destinatarios y contenido HTML
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -45,10 +50,10 @@ public class EmailService {
             helper.setText(htmlContent, true); // true indica que el texto es HTML
 
             mailSender.send(message);
-            log.info("Correo electrónico enviado con éxito a: {}", to);
+            log.info("✅ Correo electrónico enviado con éxito a: {}", to);
         } catch (Exception e) {
-            log.error("Fallo al enviar correo a {}. Razón: {}", to, e.getMessage());
-            log.warn("Nota: Verifica que las credenciales de Mailjet (API Key y Secret) sean válidas en tu entorno.");
+            log.error("❌ Fallo al enviar correo a {}. Razón: {}", to, e.getMessage(), e);
+            log.warn("Nota: Verifica que las credenciales de Mailjet (API Key y Secret) sean válidas y que el correo remitente '{}' esté verificado en Mailjet.", fromEmail);
         }
     }
 

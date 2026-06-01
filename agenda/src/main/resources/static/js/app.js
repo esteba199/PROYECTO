@@ -46,26 +46,26 @@ document.addEventListener("DOMContentLoaded", () => {
     // 2. Sincronizar el ícono del tema según el estado actual
     updateThemeIcon();
 
-    // 3. CARGAR TEMA DESDE MYSQL (solo para sincronizar, sin flash)
-    fetch('/api/config')
-        .then(res => {
-            if (!res.ok) throw new Error('No autenticado');
-            return res.json();
-        })
-        .then(config => {
-            const serverTheme = config.theme || 'DARK';
-            const localTheme = localStorage.getItem('agenda-theme') || 'DARK';
-
-            // Solo actualizar si el servidor tiene un tema diferente al local
-            // Esto evita flashes innecesarios al navegar entre secciones
-            if (serverTheme !== localTheme) {
+    // 3. SINCRONIZAR TEMA CON SERVIDOR (solo como fallback inicial)
+    // localStorage es la fuente de verdad. El servidor solo se usa
+    // si el usuario nunca ha guardado un tema localmente.
+    const localTheme = localStorage.getItem('agenda-theme');
+    if (!localTheme) {
+        // Primera visita: leer del servidor y guardar en localStorage
+        fetch('/api/config')
+            .then(res => {
+                if (!res.ok) throw new Error('No autenticado');
+                return res.json();
+            })
+            .then(config => {
+                const serverTheme = config.theme || 'DARK';
                 localStorage.setItem('agenda-theme', serverTheme);
                 applyTheme(serverTheme);
-            }
-        })
-        .catch(() => {
-            // Vista pública (login, registro) — no hacer nada
-        });
+            })
+            .catch(() => {
+                // Vista pública o error — no hacer nada
+            });
+    }
 
     // 4. ESCUCHAR BOTÓN DE TOGGLE DE TEMA (si está en esta página)
     document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleTheme);

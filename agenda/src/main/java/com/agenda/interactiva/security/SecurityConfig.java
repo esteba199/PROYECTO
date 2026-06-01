@@ -33,6 +33,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            .csrf(csrf -> csrf.disable()) // Deshabilitamos CSRF para que los fetch del frontend (POST/PUT/DELETE) funcionen sin token
             .authorizeHttpRequests(auth -> auth
                 // Rutas públicas (Archivos estáticos y páginas de autenticación)
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/fonts/**").permitAll()

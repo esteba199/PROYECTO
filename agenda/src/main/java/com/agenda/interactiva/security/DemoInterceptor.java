@@ -34,33 +34,33 @@ public class DemoInterceptor implements HandlerInterceptor {
 
         // ── 2. Permitir rutas de autenticación (login / logout / registro) ───
         if (uri.equals("/inicio_sesion")
+                || uri.equals("/registro")
                 || uri.startsWith("/cerrar_sesion")
                 || uri.startsWith("/api/auth/")) {
             return true;
         }
 
-        // ── 3. Solo verificamos usuarios autenticados ────────────────────────
+        // ── 3. Solo interceptar rutas de API (/api/**) ──────────────────────
+        // Las rutas web (formularios, vistas Thymeleaf) no se bloquean.
+        if (!uri.startsWith("/api/")) {
+            return true;
+        }
+
+        // ── 4. Solo verificamos usuarios autenticados ────────────────────────
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
             return true;
         }
 
-        // ── 4. ¿Es el usuario demo? ──────────────────────────────────────────
+        // ── 5. ¿Es el usuario demo? ──────────────────────────────────────────
         if (DEMO_USERNAME.equalsIgnoreCase(auth.getName())) {
             log.warn("[DEMO MODE] Acceso denegado → {} {}", method, uri);
 
-            // Respuesta JSON para llamadas AJAX/API
-            if (uri.startsWith("/api/")) {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write(
-                    "{\"error\": true, \"message\": \"Modo Invitado: cuenta de solo lectura. Regístrate para guardar cambios.\"}"
-                );
-                return false;
-            }
-
-            // Para peticiones web normales (formularios), redirigir al panel con flag
-            response.sendRedirect("/panel?demoError=true");
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write(
+                "{\"error\": true, \"message\": \"Modo Invitado: cuenta de solo lectura. Regístrate para guardar cambios.\"}"
+            );
             return false;
         }
 
